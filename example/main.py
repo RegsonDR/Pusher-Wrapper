@@ -20,7 +20,7 @@ def example():
         cluster = PUSHER["cluster"]
     )
 
-    # Data to send via websocket
+    # Data to send via websocket, single request
     Pusher.load(
         {
             "data": { "message" : "hello_world!" },
@@ -28,9 +28,32 @@ def example():
             "channel":"my-test-channel"
         }
     )
+    
+    # Data to send via websocket, multirequest
+    # Pusher.load(
+    #     [{
+    #         "data": { "message" : "hello_world!" },
+    #         "name":"my-event",
+    #         "channel":"my-test-channel"
+    #     },
+    #     {
+    #         "data": { "message" : "hello_world2!" },
+    #         "name":"my-event",
+    #         "channel":"my-other-test-channel"
+    #     }],
+    # )
+
+    # Get channels information
+    # Pusher.get_channels()
+
+    # Get channel information for a particular channel
+    # Pusher.get_channel("my-test-channel")
+
+    # Get users information for a particular channel
+    # Pusher.get_users("my-test-channel")
 
     # HTTP code & Response from the API is returned  
-    Response = Pusher.execute()
+    print(Pusher.execute())
 
     return render_template(
         'index.html',

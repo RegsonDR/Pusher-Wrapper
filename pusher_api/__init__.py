@@ -3,6 +3,7 @@ import json
 import hashlib
 import time
 import requests
+import ast
 
 class PusherAPI(object):
     def __init__(self, app_id, key, secret, cluster):
@@ -26,6 +27,7 @@ class PusherAPI(object):
         event["data"] = str(event["data"])
         
         self.payload = json.dumps(event)
+        self.http_method = "POST"
         self.endpoint = "/apps/"+ self.app_id + "/events"
 
     def __batch_events(self, batch):
@@ -38,6 +40,7 @@ class PusherAPI(object):
             event['data'] =  str(event['data'])
 
         self.payload = json.dumps({"batch":batch})
+        self.http_method = "POST"
         self.endpoint = "/apps/"+ self.app_id + "/batch_events"
 
     def __validate_event(self, event):
@@ -55,6 +58,21 @@ class PusherAPI(object):
         elif "channels" in event and not isinstance(event["channels"], list):
             raise TypeError("Channels must be a list datatype")
 
+    def get_channels(self):
+        self.payload =  json.dumps({"info":["user_count"]})
+        self.http_method = "GET"
+        self.endpoint = "/apps/"+ self.app_id + "/channels"
+
+    def get_channel(self, channel_name):
+        self.payload =  json.dumps({"info":["user_count","subscription_count"]})
+        self.http_method = "GET"
+        self.endpoint = "/apps/"+ self.app_id + "/channels/"+channel_name
+
+    def get_users(self, channel_name):
+        self.payload =  json.dumps({})
+        self.http_method = "GET"
+        self.endpoint = "/apps/"+ self.app_id + "/channels/"+channel_name+"/users"
+
     def __authenticate_request(self):
         # Get the Relevant Authentication Details
         auth_timestamp = '%.0f' % time.time()
@@ -64,7 +82,7 @@ class PusherAPI(object):
                            "&auth_timestamp=" + auth_timestamp +
                            "&auth_version="+ auth_version +
                            "&body_md5=" + body_md5)
-        signature = ("POST\n" + self.endpoint +"\n"+auth_parameters)
+        signature = (self.http_method+"\n" + self.endpoint +"\n"+auth_parameters)
         auth_signature = hmac.new(self.secret.encode('utf-8'), signature.encode('utf-8'), hashlib.sha256).hexdigest()
         return auth_parameters, auth_signature
 
@@ -73,5 +91,14 @@ class PusherAPI(object):
         auth_parameters, auth_signature = self.__authenticate_request()
         request_url = ("https://api-" + self.cluster + ".pusher.com" + self.endpoint + "?" + auth_parameters + "&auth_signature=" + auth_signature)
         # Send Request
-        response = requests.post(request_url, data=self.payload, headers={"Content-Type": "application/json"})
-        return ("%s: %s" % (response.status_code,response.content))
+        if self.http_method == "GET":
+            api_response = requests.get(request_url, data=self.payload, headers={"Content-Type": "application/json"})
+        elif self.http_method == "POST":
+            api_response = requests.post(request_url, data=self.payload, headers={"Content-Type": "application/json"})
+        # Create a response dictionary 
+        user_response = {"code":api_response.status_code}
+        try:
+            user_response["response"] = json.loads(api_response.content)
+        except:
+            user_response["response"] = api_response.content.decode("utf-8")
+        return user_response
